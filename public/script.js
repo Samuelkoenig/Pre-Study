@@ -20,6 +20,7 @@
  *   replaced by a button to move to the next page when the final dialogue state has been 
  *   reached. 
  * - likertQuestions @type {string[]}: an array with the names of all likert scale questions.
+ * - extraTextFields @type {string[]}: an array with the names of all free textarea questions.
  * - questionSetClasses @type {Array<[string, string]>}: An array with html class names of
  *   elements to be arranged in a randomized order. Each entry is a list with two class names: 
  *   The first is the class name of the parent class container, which holds the elements that
@@ -46,13 +47,16 @@
  *   has been reached.
  *   on the final page. 
  */
-const totalPages = 8;    // To be specified: the actual number of pages in the survey!
+const totalPages = 9;    // To be specified: the actual number of pages in the survey!
 const chatbotPage = 4;   // To be specified: the page number where the chatbot appears!
-const emailCollection = true  //To be specified: Whether users can submit an email!
+const emailCollection = false  //To be specified: Whether users can submit an email!
 const textareaReplacement = true  //To be specified: Whether the textarea should be replaced!
 const likertQuestions = [
     "gender", 
     "age", 
+    "education", 
+    "occupation", 
+    "chatbot-experience", 
     "service-quality-1", 
     "service-quality-2", 
     "service-quality-3", 
@@ -67,11 +71,21 @@ const likertQuestions = [
     "empathy-2", 
     "empathy-3", 
     "empathy-4", 
-    "empathy-5"
+    "empathy-5", 
+    "ai-literacy-1", 
+    "ai-literacy-2", 
+    "ai-literacy-3", 
+    "ai-literacy-4", 
+    "ai-literacy-5"
 ];                      // To be specified: the likert question names used in the survey!
+const extraTextFields = [
+    "occupation-student",
+    "occupation-other"
+  ];                    // To be specified: the textarea question names used in the survey!
 const questionSetClasses = [
     [".construct-service-quality", ".question"],
-    [".constructs-empathy-satisfaction", ".question"]
+    [".constructs-empathy-satisfaction", ".question"], 
+    [".construct-ai-literacy", ".question"]
 ]                       // To be specified: the class names of the randomized question sets! 
 
 let pages;
@@ -181,6 +195,10 @@ function attachEventListeners() {
 
     document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(function (input) {
         input.addEventListener('change', inputFieldLogic);
+    });
+
+    document.querySelectorAll('.extra-input input[type="text"]').forEach(function (input) {
+        input.addEventListener('input', saveData);
     });
 
     document.getElementById('openChatbotBtn').addEventListener('click', nextButtonLogic);
@@ -418,14 +436,35 @@ function handleFinishedDialogue(){
 /**
  * Saves new information provided by the participant in the input fields. 
  * 
+ * - Toggles extra textarea input fields, depending on whether the respective 
+ *   radio buttons are selected or not. 
  * - Updates the session storage using saveData().
  * - This function is called each time a change in the input fields is detected.
  *
  * @returns {void}
  */
 function inputFieldLogic() {
+    toggleExtraInputs();
     saveData();
 }
+
+/**
+ * Toggles extra textarea input fields.
+ * 
+ * - First hides all extra textarea input fields and then only shows those 
+ *   textarea input fields which are connected with a radiobutton that is
+ *   currently selected. 
+ * - This function is called each time a change in the input fields is detected.
+ *
+ * @returns {void}
+ */
+function toggleExtraInputs() {
+    document.querySelectorAll('.extra-input').forEach(div => div.classList.add('hidden'));
+    document.querySelectorAll('input[data-extra-target]:checked').forEach(radio => {
+      const target = document.getElementById(radio.dataset.extraTarget);
+      if (target) target.classList.remove('hidden');
+    });
+  }
 
 /**
  * Saves the survey data.
@@ -443,6 +482,11 @@ function saveData() {
         const value = document.querySelector(`input[name="${question}"]:checked`)?.value || '';
         formData[question] = value;
     });
+
+    extraTextFields.forEach(question => {
+        console.log('test:\n',document.querySelector(`input[name="${question}"]`)?.value || '');
+        formData[question] = document.querySelector(`input[name="${question}"]`)?.value || '';
+      });
 
     sessionStorage.setItem('formData', JSON.stringify(formData));
 }
@@ -498,6 +542,11 @@ function collectData() {
     likertQuestions.forEach(question => {
         data[question] = document.querySelector(`input[name="${question}"]:checked`)?.value || '';
     });
+    extraTextFields.forEach(question => {
+        console.log('test:\n',document.querySelector(`input[name="${question}"]`)?.value || '');
+        data[question] = document.querySelector(`input[name="${question}"]`)?.value || '';
+    });
+    console.log('data:\n',data);
     return data;
 }
 
@@ -791,6 +840,11 @@ function restoreState() {
                 const radio = document.querySelector(`input[name="${question}"][value="${state[question]}"]`);
                 if (radio) radio.checked = true;
             }
+        });
+        toggleExtraInputs();
+        extraTextFields.forEach(question => {
+            const input = document.querySelector(`input[name="${question}"]`);
+            if (input && state[question] !== undefined) input.value = state[question];
         });
     }
 
